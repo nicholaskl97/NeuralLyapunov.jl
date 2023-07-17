@@ -6,6 +6,8 @@ using LinearAlgebra
 using Optimization
 import OptimizationOptimJL
 import Hypatia, JuMP
+import Flux
+import ComponentArrays
 
 include("conditions_specification.jl")
 include("NeuralLyapunovPDESystem.jl")
