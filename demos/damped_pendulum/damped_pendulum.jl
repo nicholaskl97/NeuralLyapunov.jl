@@ -9,16 +9,26 @@ Random.seed!(200)
 
 ######################### Define dynamics and domain ##########################
 
-function pendulum_dynamics(x, p, t)
-    θ, ω = x
-    ζ, ω_0 = p
-    [ω;
-    -2ζ * ω - ω_0^2 * sin(θ)]
-end
+@parameters ζ ω_0
+@variables t θ(t)
+Dt = Differential(t)
+DDt = Dt^2
+
+eqs = [DDt(θ) + 2ζ*Dt(θ) + ω_0^2*sin(θ) ~ 0.0]
+
+@named dynamics = ODESystem(
+        eqs, 
+        t, 
+        [θ], 
+        [ζ, ω_0]; 
+        defaults = Dict([ζ => 0.5, ω_0 => 1.0])
+    )
+
+dynamics = structural_simplify(dynamics)
+
 lb = [-pi, -10.0];
 ub = [pi, 10.0];
-p = [0.5, 1.0]
-dynamics = ODEFunction(pendulum_dynamics; syms = [:θ, :ω], paramsyms = [:ζ, :ω_0])
+p = [dynamics.defaults[param] for param in dynamics.ps]
 
 ####################### Specify neural Lyapunov problem #######################
 
@@ -71,14 +81,13 @@ pde_system, network_func = NeuralLyapunovPDESystem(
     dynamics,
     lb,
     ub,
-    spec;
-    p = p
+    spec
 )
 
 ######################## Construct OptimizationProblem ########################
 
-prob = discretize(pde_system, discretization)
 sym_prob = symbolic_discretize(pde_system, discretization)
+prob = discretize(pde_system, discretization)
 
 callback = function (p, l)
     println("loss: ", l)
@@ -87,9 +96,6 @@ end
 
 ########################## Solve OptimizationProblem ##########################
 
-res = Optimization.solve(prob, Adam(); callback = callback, maxiters = 300)
-
-prob = Optimization.remake(prob, u0 = res.u);
 res = Optimization.solve(prob, Adam(); callback = callback, maxiters = 300)
 
 println("Switching from Adam to BFGS");
@@ -102,7 +108,7 @@ V_func, V̇_func, ∇V_func = NumericalNeuralLyapunovFunctions(
     res.u, 
     network_func, 
     structure.V,
-    dynamics,
+    ODEFunction(dynamics),
     zeros(length(lb));
     p = p
     )

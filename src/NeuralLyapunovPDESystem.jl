@@ -198,6 +198,30 @@ function NeuralLyapunovPDESystem(
         )
 end
 
+function NeuralLyapunovPDESystem(
+    dynamics::ODESystem,
+    lb,
+    ub,
+    spec::NeuralLyapunovSpecification;
+    fixed_point = zeros(length(lb)),
+    p = SciMLBase.NullParameters(),
+)::Tuple{PDESystem,Function}
+    p = if p == SciMLBase.NullParameters() && !isempty(dynamics.ps)
+        [dynamics.defaults[param] for param in dynamics.ps]
+    else
+        p
+    end
+    
+    NeuralLyapunovPDESystem(
+        ODEFunction(dynamics),
+        lb,
+        ub,
+        spec;
+        fixed_point = fixed_point,
+        p = p
+    )
+end
+
 """
     NumericalNeuralLyapunovFunctions(phi, θ, network_func, structure, dynamics, fixed_point; jac, J_net)
 
