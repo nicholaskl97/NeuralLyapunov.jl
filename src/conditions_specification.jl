@@ -90,6 +90,61 @@ function NonnegativeNeuralLyapunov(
     end
 end
 
+"""
+    PositiveSemiDefiniteStructure(network_dim; pos_def, non_neg, grad_pos_def, grad_non_neg, grad)
+
+Creates a NeuralLyapunovStructure where the Lyapunov function is the product of
+a positive (semi-)definite function pos_def which does not depend on the 
+network and a nonnegative function non_neg which does depend the network.
+
+The condition that the Lyapunov function must be minimized uniquely at the
+fixed point can be represented as V(fixed_point) = 0, V(state) > 0 when 
+state != fixed_point. This structure ensures V(state) ≥ 0. Further, if pos_def
+is 0 only at fixed_point (and positive elsewhere) and if non_neg is strictly 
+positive away from fixed_point (as is the case for the default values of pos_def
+and non_neg), then this structure ensures V(fixed_point) = 0 and V(state) > 0 
+when state != fixed_point.
+
+grad_pos_def(state, fixed_point) should be the gradient of pos_def with respect
+to state at state. Similarly, grad_non_neg(net, J_net, state, fixed_point) 
+should be the gradient of non_neg(net, state, fixed_point) with respect to 
+state at state. If grad_pos_def or grad_non_neg is not defined, it is evaluated 
+using grad, which defaults to ForwardDiff.gradient. 
+
+The neural network output has dimension network_dim.
+"""
+function PositiveSemiDefiniteStructure(
+        network_dim::Integer;
+        pos_def::Function = (state, fixed_point) -> log(1.0 + (state - fixed_point) ⋅ (state - fixed_point)),
+        non_neg::Function = (net, state, fixed_point) -> 1 + net(state) ⋅ net(state),
+        grad_pos_def = nothing,
+        grad_non_neg = nothing,
+        grad = ForwardDiff.gradient,
+    )
+    _grad(f::Function, x::AbstractArray{T}) where T<:Num = Symbolics.gradient(f(x), x)
+    _grad(f::Function, x) = grad(f, x)
+    grad_pos_def = if isnothing(grad_pos_def)
+        (state, fixed_point) -> _grad((x) -> pos_def(x, fixed_point), state)
+    else
+        grad_pos_def
+    end
+    grad_non_neg = if isnothing(grad_non_neg)
+        (net, J_net, state, fixed_point) -> _grad((x) -> non_neg(net, x, fixed_point), state)
+    else
+        grad_non_neg
+    end
+    NeuralLyapunovStructure(
+        (net, state, fixed_point) -> pos_def(state, fixed_point) * non_neg(net, state, fixed_point),
+        (net, J_net, state, fixed_point) -> 
+            grad_pos_def(state, fixed_point) * non_neg(net, state, fixed_point) + 
+            pos_def(state, fixed_point) * grad_non_neg(net, J_net, state, fixed_point),
+        (net, J_net, f, state, fixed_point) -> 
+            (f(state) ⋅ grad_pos_def(state, fixed_point)) * non_neg(net, state, fixed_point) + 
+            pos_def(state, fixed_point) * (f(state) ⋅ grad_non_neg(net, J_net, state, fixed_point)),
+        network_dim
+    )
+end
+
 abstract type AbstractLyapunovMinimizationCondition end
 
 """
@@ -169,7 +224,7 @@ end
 
 function get_minimization_condition(cond::LyapunovMinimizationCondition)
     if cond.check_nonnegativity
-        return (V, x, fixed_point) -> cond.relu(V(x) - cond.strength(x, fixed_point))
+        return (V, x, fixed_point) -> cond.relu(cond.strength(x, fixed_point) - V(x))
     else
         return nothing
     end
@@ -278,6 +333,8 @@ LyapunovDecreaseCondition(decrease, strength, check_fixed_point)
 
 Specifies the form of the Lyapunov conditions to be used; training will enforce
     decrease(V, dVdt) ≤ strength(state, fixed_point)
+The inequality will be approximated by the equation
+    relu(decrease(V, dVdt) - strength(state, fixed_point)) = 0.0
 If check_fixed_point is false, then training assumes dVdt(fixed_point) = 0, but
 if check_fixed_point is true, then training will enforce dVdt(fixed_point) = 0.
 
