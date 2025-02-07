@@ -42,8 +42,10 @@ AbstractLyapunovDecreaseCondition
 ```
 
 When constructing the PDESystem, [`NeuralLyapunovPDESystem`](@ref) uses [`check_decrease`](@ref) to determine if it should include an equation equating the result of [`get_decrease_condition`](@ref) to zero.
+It additionally uses [`check_maximal_fixed_point`](@ref) to determine if it should include the equation ``\nabla \dot{V}(x_0) = 0``, which helps enforce the local maximality of the fixed point.
 
 ```@docs
 check_decrease
 get_decrease_condition
+check_maximal_fixed_point
 ```

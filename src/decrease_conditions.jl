@@ -1,5 +1,5 @@
 """
-    LyapunovDecreaseCondition(check_decrease, rate_metric, strength, rectifier)
+    LyapunovDecreaseCondition(check_decrease, rate_metric, strength, rectifier, check_fixed_point_gradient)
 
 Specifies the form of the Lyapunov decrease condition to be used.
 
@@ -29,7 +29,8 @@ Note that the approximate equation and inequality are identical when
 
 If the dynamics truly have a fixed point at ``x_0`` and ``V̇(x)`` is truly the rate of
 decrease of ``V(x)`` along the dynamics, then ``V̇(x_0)`` will be ``0`` and there is no need
-to train for ``V̇(x_0) = 0``.
+to train for ``V̇(x_0) = 0``. So, if `check_fixed_point_gradient` is `true`, then training
+will also attempt to enforce the local maximality of the fixed point via ``∇V̇(x_0) = 0``.
 
 # Examples:
 
@@ -60,10 +61,15 @@ struct LyapunovDecreaseCondition <: AbstractLyapunovDecreaseCondition
     rate_metric::Function
     strength::Function
     rectifier::Function
+    check_fixed_point_gradient::Bool
 end
 
 function check_decrease(cond::LyapunovDecreaseCondition)::Bool
     cond.check_decrease
+end
+
+function check_maximal_fixed_point(cond::LyapunovDecreaseCondition)::Bool
+    cond.check_fixed_point_gradient
 end
 
 function get_decrease_condition(cond::LyapunovDecreaseCondition)
@@ -83,7 +89,7 @@ function get_decrease_condition(cond::LyapunovDecreaseCondition)
 end
 
 """
-    StabilityISL(; rectifier)
+    StabilityISL(; rectifier, check_fixed_point_gradient)
 
 Construct a [`LyapunovDecreaseCondition`](@ref) corresponding to stability in the sense of
 Lyapunov (i.s.L.).
@@ -93,17 +99,21 @@ Stability i.s.L. is proven by ``V̇(x) ≤ 0``. The inequality is represented by
 exactly represents the inequality, but differentiable approximations of this function may be
 employed.
 """
-function StabilityISL(; rectifier = (t) -> max(zero(t), t))
+function StabilityISL(;
+    rectifier = (t) -> max(zero(t), t),
+    check_fixed_point_gradient = true
+)::LyapunovDecreaseCondition
     return LyapunovDecreaseCondition(
         true,
         (V, dVdt) -> dVdt,
         (x, x0) -> 0.0,
-        rectifier
+        rectifier,
+        check_fixed_point_gradient
     )
 end
 
 """
-    AsymptoticStability(; C, strength, rectifier)
+    AsymptoticStability(; C, strength, rectifier, check_fixed_point_gradient)
 
 Construct a [`LyapunovDecreaseCondition`](@ref) corresponding to asymptotic stability.
 
@@ -120,18 +130,20 @@ but differentiable approximations of this function may be employed.
 function AsymptoticStability(;
         C::Real = 1e-6,
         strength = (x, x0) -> C * (x - x0) ⋅ (x - x0),
-        rectifier = (t) -> max(zero(t), t)
+        rectifier = (t) -> max(zero(t), t),
+        check_fixed_point_gradient = true
 )::LyapunovDecreaseCondition
     return LyapunovDecreaseCondition(
         true,
         (V, dVdt) -> dVdt,
         strength,
-        rectifier
+        rectifier,
+        check_fixed_point_gradient
     )
 end
 
 """
-    ExponentialStability(k; rectifier)
+    ExponentialStability(k; rectifier, check_fixed_point_gradient)
 
 Construct a [`LyapunovDecreaseCondition`](@ref) corresponding to exponential stability of
 rate ``k``.
@@ -144,28 +156,31 @@ but differentiable approximations of this function may be employed.
 """
 function ExponentialStability(
         k::Real;
-        rectifier = (t) -> max(zero(t), t)
+        rectifier = (t) -> max(zero(t), t),
+        check_fixed_point_gradient = true
 )::LyapunovDecreaseCondition
     return LyapunovDecreaseCondition(
         true,
         (V, dVdt) -> dVdt + k * V,
         (x, x0) -> 0.0,
-        rectifier
+        rectifier,
+        check_fixed_point_gradient
     )
 end
 
 """
-    DontCheckDecrease()
+    DontCheckDecrease(; check_fixed_point_gradient)
 
 Construct a [`LyapunovDecreaseCondition`](@ref) which represents not checking for
 decrease of the Lyapunov function along system trajectories. This is appropriate
 in cases when the Lyapunov decrease condition has been structurally enforced.
 """
-function DontCheckDecrease()::LyapunovDecreaseCondition
+function DontCheckDecrease(; check_fixed_point_gradient = true)::LyapunovDecreaseCondition
     return LyapunovDecreaseCondition(
         false,
         (V, dVdt) -> zero(V),
         (state, fixed_point) -> 0.0,
-        (t) -> zero(t)
+        (t) -> zero(t),
+        check_fixed_point_gradient
     )
 end

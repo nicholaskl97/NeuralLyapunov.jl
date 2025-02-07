@@ -34,10 +34,11 @@ AbstractLyapunovMinimizationCondition
 ```
 
 When constructing the PDESystem, [`NeuralLyapunovPDESystem`](@ref) uses [`check_nonnegativity`](@ref) to determine if it should include an equation equating the result of [`get_minimization_condition`](@ref) to zero.
-It additionally uses [`check_minimal_fixed_point`](@ref) to determine if it should include the equation ``V(x_0) = 0``.
+It additionally uses [`check_zero_fixed_point`](@ref) to determine if it should include the equation ``V(x_0) = 0`` and [`check_minimal_fixed_point`](@ref) to determine if it should include the equation ``\nabla V(x_0) = 0``.
 
 ```@docs
 check_nonnegativity
+check_zero_fixed_point
 check_minimal_fixed_point
 get_minimization_condition
 ```

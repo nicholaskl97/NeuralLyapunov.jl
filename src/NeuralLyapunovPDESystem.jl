@@ -270,10 +270,22 @@ function _NeuralLyapunovPDESystem(
 
     bcs = Equation[]
 
-    if check_minimal_fixed_point(minimization_condition)
+    if check_zero_fixed_point(minimization_condition)
         _V = V(fixed_point)
         _V = _V isa AbstractVector ? _V[] : _V
         push!(bcs, _V ~ 0.0)
+    end
+
+    if check_minimal_fixed_point(minimization_condition)
+        _V = V(fixed_point)
+        _V = _V isa AbstractVector ? _V[] : _V
+        append!(bcs, Symbolics.gradient(_V, state) .~ 0.0)
+    end
+
+    if check_maximal_fixed_point(decrease_condition)
+        _V̇ = V̇(fixed_point)
+        _V̇ = _V̇ isa AbstractVector ? _V̇[] : _V̇
+        append!(bcs, Symbolics.gradient(_V̇, state) .~ 0.0)
     end
 
     if policy_search

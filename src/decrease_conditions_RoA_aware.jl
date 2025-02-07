@@ -1,5 +1,5 @@
 """
-    RoAAwareDecreaseCondition(check_decrease, rate_metric, strength, rectifier, ρ, out_of_RoA_penalty)
+    RoAAwareDecreaseCondition(check_decrease, rate_metric, strength, rectifier, ρ, out_of_RoA_penalty, check_fixed_point_gradient)
 
 Specifies the form of the Lyapunov decrease condition to be used, training for a region of
 attraction estimate of ``\\{ x : V(x) ≤ ρ \\}``.
@@ -50,7 +50,8 @@ one when the input is nonnegative and exactly zero when the input is negative.
 
 If the dynamics truly have a fixed point at ``x_0`` and ``V̇(x)`` is truly the rate of
 decrease of ``V(x)`` along the dynamics, then ``V̇(x_0)`` will be ``0`` and there is no need
-to train for ``V̇(x_0) = 0``.
+to train for ``V̇(x_0) = 0``. So, if `check_fixed_point_gradient` is `true`, then training
+will also attempt to enforce the local maximality of the fixed point via ``∇V̇(x_0) = 0``.
 
 # Examples:
 
@@ -94,10 +95,15 @@ struct RoAAwareDecreaseCondition <: AbstractLyapunovDecreaseCondition
     sigmoid::Function
     ρ::Real
     out_of_RoA_penalty::Function
+    check_fixed_point_gradient::Bool
 end
 
 function check_decrease(cond::RoAAwareDecreaseCondition)::Bool
     cond.check_decrease
+end
+
+function check_maximal_fixed_point(cond::RoAAwareDecreaseCondition)::Bool
+    cond.check_fixed_point_gradient
 end
 
 function get_decrease_condition(cond::RoAAwareDecreaseCondition)
@@ -167,6 +173,7 @@ function make_RoA_aware(
         cond.rectifier,
         sigmoid,
         ρ,
-        out_of_RoA_penalty
+        out_of_RoA_penalty,
+        cond.check_fixed_point_gradient
     )
 end
