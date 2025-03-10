@@ -147,25 +147,12 @@ end
         decrease_condition
     )
 
-    @named pde_system = NeuralLyapunovPDESystem(
-        open_loop_pendulum_dynamics,
-        lb,
-        ub,
-        spec;
-        fixed_point = upright_equilibrium,
-        p = p,
-        state_syms = state_syms,
-        parameter_syms = parameter_syms,
-        policy_search = true
-    )
-    discretization = PhysicsInformedNN(chain, strategy)
-    sym_prob = symbolic_discretize(pde_system, discretization)
-
     # Define optimization parameters
     opt = [OptimizationOptimisers.Adam(0.05), OptimizationOptimJL.BFGS()]
     optimization_args = [[:maxiters => 300], [:maxiters => 300]]
 
     # Run benchmark
+    endpoint_check = (x) -> ≈([sin(x[1]), cos(x[1]), x[2]], [0, -1, 0], atol = 5e-3)
     (cm, training_time), (states, endpoints, actual, predicted, V_samples, V̇_samples) = benchmark(
         open_loop_pendulum_dynamics,
         lb,
@@ -182,7 +169,8 @@ end
         state_syms,
         parameter_syms,
         policy_search = true,
-        endpoint_check = (x) -> ≈([sin(x[1]), cos(x[1]), x[2]], [0, -1, 0], atol = 5e-3),
+        endpoint_check,
+        classifier = (V, V̇, x) -> V̇ < zero(V̇) || endpoint_check(x),
         verbose = true,
         init_params = ps
     )

@@ -26,7 +26,7 @@ eqs = [DDt(θ) + 2ζ * ω_0 * Dt(θ) + ω_0^2 * sin(θ) ~ 0.0]
     t,
     [θ],
     [ζ, ω_0];
-    defaults = defaults
+    defaults
 )
 
 dynamics = structural_simplify(dynamics)

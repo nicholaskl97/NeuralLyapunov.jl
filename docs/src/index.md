@@ -23,3 +23,9 @@ When you begin to write your own neural Lyapunov code, especially if you hope to
 ```@contents
 Pages = Main.MANUAL_PAGES
 ```
+
+Finally, when you wish to test your neural Lyapunov code, you may wish to use one of the built-in example systems:
+
+```@contents
+Pages = Main.NEURALLYAPUNOVPROBLEMLIBRARY_PAGES
+```

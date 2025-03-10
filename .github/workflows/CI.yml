@@ -44,8 +44,17 @@ jobs:
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
+      - name: "Dev NeuralLyapunovProblemLibrary"
+        run: |
+          import Pkg
+          Pkg.Registry.update()
+          Pkg.develop(Pkg.PackageSpec(path="lib/NeuralLyapunovProblemLibrary"))
+          Pkg.instantiate()
+        shell: julia --color=yes --code-coverage=user --depwarn=yes --project=test {0}
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+            directories: src,ext,lib/NeuralLyapunovProblemLibrary/src,lib/NeuralLyapunovProblemLibrary/ext
       - uses: codecov/codecov-action@v5
         with:
           files: lcov.info
@@ -68,7 +77,11 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Pkg
-          Pkg.develop(PackageSpec(path=pwd()))
+          dev_pkgs = Pkg.PackageSpec[]
+          for pkg in (pwd(), pwd() * "/lib/NeuralLyapunovProblemLibrary")
+            push!(dev_pkgs, Pkg.PackageSpec(path=pkg))
+          end
+          Pkg.develop(dev_pkgs)
           Pkg.instantiate()
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-docdeploy@v1
