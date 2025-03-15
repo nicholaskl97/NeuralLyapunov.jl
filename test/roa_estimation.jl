@@ -1,9 +1,10 @@
 using NeuralPDE, Lux, NeuralLyapunov
 import Optimization, OptimizationOptimisers, OptimizationOptimJL
-using StableRNGs
+using Random, StableRNGs
 using Test, LinearAlgebra, ForwardDiff
 
 rng = StableRNG(0)
+Random.seed!(200)
 
 println("Region of Attraction Estimation")
 

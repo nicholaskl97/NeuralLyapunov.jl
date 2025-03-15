@@ -12,45 +12,32 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 jobs:
-  test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 1440
-    permissions: # needed to allow julia-actions/cache to proactively delete old caches that it has created
-      actions: write
-      contents: read
-    continue-on-error: ${{ matrix.allow_failure }}
+  tests:
+    name: "Tests"
     strategy:
       fail-fast: false
       matrix:
         version:
           - '1.11'
+          - 'nightly'
         os:
           - ubuntu-latest
         arch:
           - x64
-        allow_failure: 
-          - false
+        project:
+          - '.'
+          - 'lib/NeuralLyapunovProblemLibrary'
         include:
+          - version: '1.11'
+            allow_failure: false
           - version: 'nightly'
-            os: ubuntu-latest
-            arch: x64
             allow_failure: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-      - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v5
-        with:
-          files: lcov.info
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
+    uses: "SciML/.github/.github/workflows/tests.yml@v1"
+    with:
+      julia-version: "${{ matrix.version }}"
+      project: "${{ matrix.project }}"
+      group: "all"
+    secrets: "inherit"
   docs:
     name: Documentation
     runs-on: ubuntu-latest
@@ -68,7 +55,11 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Pkg
-          Pkg.develop(PackageSpec(path=pwd()))
+          dev_pkgs = Pkg.PackageSpec[]
+          for pkg in (pwd(), pwd() * "/lib/NeuralLyapunovProblemLibrary")
+            push!(dev_pkgs, Pkg.PackageSpec(path=pkg))
+          end
+          Pkg.develop(dev_pkgs)
           Pkg.instantiate()
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-docdeploy@v1

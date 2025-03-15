@@ -15,8 +15,9 @@ We'll train in the larger domain ``x \in [-2, 2]``.
 ```julia
 using NeuralPDE, Lux, NeuralLyapunov
 using Optimization, OptimizationOptimisers, OptimizationOptimJL
-using Random
+using Random, StableRNGs
 
+rng = StableRNG(0)
 Random.seed!(200)
 
 ######################### Define dynamics and domain ##########################
@@ -37,10 +38,11 @@ chain = [Lux.Chain(
              Dense(dim_hidden, dim_hidden, tanh),
              Dense(dim_hidden, 1, use_bias = false)
          ) for _ in 1:dim_output]
+ps = Lux.initialparameters(rng, chain)
 
 # Define training strategy
 strategy = GridTraining(0.1)
-discretization = PhysicsInformedNN(chain, strategy)
+discretization = PhysicsInformedNN(chain, strategy; init_params = ps)
 
 # Define neural Lyapunov structure
 structure = PositiveSemiDefiniteStructure(dim_output)
@@ -121,7 +123,10 @@ For more on that aspect, see the [NeuralPDE documentation](https://docs.sciml.ai
 Since we're only considering one dimension, training on a grid isn't so bad in this case.
 
 ```@example RoA
-using Lux
+using Lux, StableRNGs
+
+# Stable random number generator for doc stability
+rng = StableRNG(0)
 
 # Define neural network discretization
 dim_state = length(lb)
@@ -132,6 +137,7 @@ chain = [Lux.Chain(
              Dense(dim_hidden, dim_hidden, tanh),
              Dense(dim_hidden, 1, use_bias = false)
          ) for _ in 1:dim_output]
+ps = Lux.initialparameters(rng, chain)
 ```
 
 ```@example RoA
@@ -139,7 +145,8 @@ using NeuralPDE
 
 # Define training strategy
 strategy = GridTraining(0.1)
-discretization = PhysicsInformedNN(chain, strategy)
+discretization = PhysicsInformedNN(chain, strategy; init_params = ps)
+nothing # hide
 ```
 
 We now define our Lyapunov candidate structure along with the form of the Lyapunov conditions we'll be using.

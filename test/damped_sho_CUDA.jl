@@ -2,8 +2,9 @@ using NeuralPDE, NeuralLyapunov
 import Optimization, OptimizationOptimisers, OptimizationOptimJL
 using Random
 using Lux, LuxCUDA, ComponentArrays
-using Test, LinearAlgebra, ForwardDiff
+using Test, LinearAlgebra, ForwardDiff, StableRNGs
 
+rng = StableRNG(0)
 Random.seed!(200)
 
 println("Damped Simple Harmonic Oscillator")
@@ -33,7 +34,7 @@ chain = Chain(
     Dense(dim_hidden, 1)
 )
 const gpud = gpu_device()
-ps = Lux.initialparameters(Random.default_rng(), chain) |> ComponentArray |> gpud |> f32
+ps = Lux.initialparameters(rng, chain) |> ComponentArray |> gpud |> f32
 
 # Define training strategy
 strategy = QuasiRandomTraining(2500)

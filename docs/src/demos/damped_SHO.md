@@ -18,8 +18,9 @@ We'll consider just the box domain ``x \in [-5, 5], v \in [-2, 2]``.
 ```julia
 using NeuralPDE, Lux, NeuralLyapunov
 using Optimization, OptimizationOptimisers, OptimizationOptimJL
-using Random
+using StableRNGs, Random
 
+rng = StableRNG(0)
 Random.seed!(200)
 
 ######################### Define dynamics and domain ##########################
@@ -42,16 +43,17 @@ dynamics = ODEFunction(f; sys = SciMLBase.SymbolCache([:x, :v], [:ζ, :ω_0]))
 # Define neural network discretization
 dim_state = length(lb)
 dim_hidden = 10
-dim_output = 3
+dim_output = 4
 chain = [Lux.Chain(
              Dense(dim_state, dim_hidden, tanh),
              Dense(dim_hidden, dim_hidden, tanh),
              Dense(dim_hidden, 1)
          ) for _ in 1:dim_output]
+ps = Lux.initialparameters(rng, chain)
 
 # Define training strategy
 strategy = QuasiRandomTraining(1000)
-discretization = PhysicsInformedNN(chain, strategy)
+discretization = PhysicsInformedNN(chain, strategy; init_params = ps)
 
 # Define neural Lyapunov structure
 structure = NonnegativeNeuralLyapunov(
@@ -114,7 +116,7 @@ Random.seed!(200)
 ```
 
 ```@example SHO
-using NeuralPDE # for ODEFunction and SciMLBase.SymbolCache
+using SciMLBase # for ODEFunction and SciMLBase.SymbolCache
 
 "Simple Harmonic Oscillator Dynamics"
 function f(state, p, t)
@@ -128,13 +130,17 @@ ub = [ 5.0,  2.0];
 p = [0.5, 1.0];
 fixed_point = [0.0, 0.0];
 dynamics = ODEFunction(f; sys = SciMLBase.SymbolCache([:x, :v], [:ζ, :ω_0]))
+nothing # hide
 ```
 
 Setting up the neural network using Lux and NeuralPDE training strategy is no different from any other physics-informed neural network problem.
 For more on that aspect, see the [NeuralPDE documentation](https://docs.sciml.ai/NeuralPDE/stable/).
 
 ```@example SHO
-using Lux
+using Lux, StableRNGs
+
+# Stable random number generator for doc stability
+rng = StableRNG(0)
 
 # Define neural network discretization
 dim_state = length(lb)
@@ -145,12 +151,16 @@ chain = [Lux.Chain(
              Dense(dim_hidden, dim_hidden, tanh),
              Dense(dim_hidden, 1)
          ) for _ in 1:dim_output]
+ps = Lux.initialparameters(rng, chain)
 ```
 
 ```@example SHO
+using NeuralPDE
+
 # Define training strategy
 strategy = QuasiRandomTraining(1000)
-discretization = PhysicsInformedNN(chain, strategy)
+discretization = PhysicsInformedNN(chain, strategy; init_params = ps)
+nothing # hide
 ```
 
 We now define our Lyapunov candidate structure along with the form of the Lyapunov conditions we'll be using.
@@ -220,6 +230,7 @@ V, V̇ = get_numerical_lyapunov_function(
     fixed_point;
     p = p
 )
+nothing # hide
 ```
 
 Now let's see how we did.
